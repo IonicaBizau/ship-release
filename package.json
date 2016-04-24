@@ -1,0 +1,27 @@
+{
+  "name": "launch-new-version",
+  "description": "A cli tool to launch a new version of a Node.js package hosted on GitHub.",
+  "keywords": [
+    "launch",
+    "new",
+    "version",
+    "a",
+    "cli",
+    "tool",
+    "to",
+    "of",
+    "node",
+    "js",
+    "package",
+    "hosted",
+    "on",
+    "github"
+  ],
+  "license": "MIT",
+  "version": "1.0.0",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ionică Bizău <bizauionica@gmail.com> (http://ionicabizau.net)"
+}
