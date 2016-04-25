@@ -3,6 +3,35 @@
 
 > A cli tool to launch a new version of a Node.js package hosted on GitHub.
 
+## :cloud: Installation
+
+You can install the package globally and use it as command line tool:
+
+
+```sh
+$ npm i -g launch-new-version
+```
+
+
+Then, run `launch-new-version --help` and see what the CLI tool can do.
+
+
+```
+$ launch-new-version --help
+Usage: launch-new-version [options]
+
+A cli tool to launch a new version of a Node.js package hosted on GitHub.
+
+Options:
+  -t, --token         The GitHub token.
+  -V, --bump-version  The semver tag to bump (major|minor|patch)
+  -b, --branch        The branch name to switch to.
+  -v, --version       Displays version information.
+  -h, --help          Displays this help.
+
+Documentation can be found at https://github.com/IonicaBizau/launch-new-version#readme.
+```
+
 ## :yum: How to contribute
 Have an idea? Found a bug? See [how to contribute][contributing].
 

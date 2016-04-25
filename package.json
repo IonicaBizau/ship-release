@@ -22,7 +22,7 @@
   "bin": {
     "launch-new-version": "./launch-new-version"
   },
-  "main": "lib/index.js",
+  "main": "./launch-new-version",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
