@@ -1,0 +1,24 @@
+{
+  "name": "foooo",
+  "version": "1.0.0",
+  "bin": {
+    "launch-new-version": "./bin/launch-new-version",
+    "pr-and-merge": "./bin/pr-and-merge"
+  },
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ionică Bizău <bizauionica@gmail.com> (http://ionicabizau.net)",
+  "license": "MIT",
+  "description": "",
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/IonicaBizau/foooo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/IonicaBizau/foooo/issues"
+  },
+  "homepage": "https://github.com/IonicaBizau/foooo#readme"
+}

@@ -1,0 +1,171 @@
+#!/usr/bin/env node
+
+"use strict";
+
+const rJson = require("r-json")
+    , wJson = require("w-json")
+    , Logger = require("bug-killer")
+    , Semver = require("semver")
+    , spawno = require("spawno")
+    , spawnNpm = require("spawn-npm")
+    , Tilda = require("tilda")
+    , pp = require("package-json-path")
+    , abs = require("abs")
+    , oneByOne = require("one-by-one")
+    , GitHub = require("gh.js")
+    , findValue = require("find-value")
+    , barbe = require("barbe")
+    , ul = require("ul")
+    , mapO = require("map-o")
+    ;
+
+new Tilda(pp(__dirname), {
+    options: [
+        {
+            opts: ["T", "token"]
+          , desc: "The GitHub token."
+          , type: String
+        }
+      , {
+            opts: ["t", "title"]
+          , desc: "The pull request title."
+          , type: String
+        }
+      , {
+            opts: ["d", "description"]
+          , desc: "The pull request/release description."
+          , type: String
+        }
+      , {
+            opts: ["b", "base-branch"]
+          , desc: "The base branch (defaults to the repository main branch)."
+          , type: String
+        }
+      , {
+            opts: ["c", "config-path"]
+          , desc: "The path to a json/js file exporting "
+          , type: String
+        }
+    ]
+}).main(a => {
+    let config = {};
+
+    if (a.opts.c.value) {
+        try {
+            config = require(abs(a.opts.c.value));
+        } catch (e) {
+            Logger.log(e);
+            return Logger.log(new Error("Cannot require the configuration file."));
+        }
+    }
+
+    let readGhToken = () => {
+        try {
+            return require(abs("~/.github-config.json")).token;
+        } catch (e) {};
+    };
+
+    config.token = config.token || a.options.T.value || readGhToken();
+    if (!config.token) {
+        return Logger.log(new Error("A GitHub token is required."));
+    }
+
+    config = ul.merge({
+        title: a.opts.title.value
+      , body: a.opts.description.value
+      , baseBranch: a.opts.b.value
+    }, config);
+
+    let gh = new GitHub(config.token)
+      , packPath = pp(process.cwd())
+      ;
+
+    oneByOne([
+        next => rJson(packPath, next)
+      , (next, pack) => {
+            let repoUrl = findValue(pack, "repository.url");
+            if (!repoUrl) {
+                return next(new Error("Cannot find the repository url in package.json"));
+            }
+            let url = GitUrlParse(repoUrl);
+            if (url.source !== "github") {
+                return next(new Error("The repository is not hosted on GitHub."));
+            }
+
+            Logger.log("Getting repo info");
+            config.version = pack.version;
+
+            gh.get(`repos${url.pathname}`, (err, repo) => next(err, repo, url, pack));
+        }
+      , (next, repo, url, pack) => {
+            spawno("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+                _displayOutput: true
+            }, (err, stdout, stderr) {
+                config.headBranch = stdout && stdout.trim();
+                next(stderr || err, repo, url, pack);
+            });
+        }
+      , (next, repo, url, pack) => {
+            Logger.log("Creating pull request");
+            var defaultBranch = config.baseBranch || repo.default_branch;
+
+            mapO(config, v => barbe(v, ["<", ">"], { pack: pack, repo: repo }));
+
+            gh.get(`repos${url.pathname}/pulls`, {
+                data: {
+                    title: config.title
+                  , body: config.body
+                  , head: config.headBranch
+                  , base: config.baseBranch
+                }
+            }, next);
+        }
+      , next => {
+            Logger.log("Created pull request");
+            Logger.log(`Switching to ${config.baseBranch}`);
+            spawno("git", ["checkout", config.baseBranch], { _showOutput: true }, next);
+        }
+      , next => {
+            Logger.log("Updating from GitHub");
+            spawno("git", ["pull", "origin", config.baseBranch], { _showOutput: true }, next);
+        }
+      , next => {
+            Logger.log(`Merging ${config.headBranch} -> ${config.baseBranch}`);
+            spawno("git", ["merge", config.headBranch], { _showOutput: true }, next);
+        }
+      , next => {
+            Logger.log("Push everything on GitHub");
+            spawno("git", ["push", "--all"], { _showOutput: true }, next);
+        }
+      , next => {
+            Logger.log("Publishing on npm.");
+            spawnNpm("publish", {}, {
+                _displayOutput: true
+            }, next)
+        }
+      , next => {
+            Logger.log("Creating new GitHub release.");
+            gh.get("repos" + url.pathname + "/releases", {
+                data: {
+                    tag_name: config.version
+                  , name: config.version
+                  , body: config.comment
+                }
+            }, next);
+        }
+      , next => {
+            Logger.log("Created new release.");
+            Logger.log(`Deleting the ${config.headBranch} branch locally.`);
+            spawno("git", ["branch", "-d", config.headBranch], { _showOutput: true }, next);
+        }
+      , next => {
+            Logger.log(`Deleting the ${config.headBranch} branch on GitHub.`);
+            spawno("git", ["push", "origin", "--delete", config.headBranch], { _showOutput: true }, next);
+        }
+    ], (err, data) => {
+        if (err) {
+            return Logger.log(err);
+        }
+        Logger.log("Done.");
+    });
+});
