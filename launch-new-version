@@ -8,6 +8,7 @@ const rJson = require("r-json")
     , Logger = require("bug-killer")
     , Semver = require("semver")
     , spawno = require("spawno")
+    , spawnNpm = require("spawn-npm")
     , Tilda = require("tilda")
     , pp = require("package-json-path")
     , abs = require("abs")
@@ -23,6 +24,12 @@ new Tilda(pp(__dirname), {
           , default: "patch"
         }
       , {
+            opts: ["c", "current-branch"]
+          , desc: "If provided, an additional branch will not be created."
+          , type: Boolean
+          , default: false
+        }
+      , {
             opts: ["b", "branch"]
           , desc: "The branch name to switch to."
           , type: String
@@ -33,7 +40,7 @@ new Tilda(pp(__dirname), {
     let packPath = pp(process.cwd());
 
     let setPackVersion = (pack, cb) => {
-        PackageJson(pack.name, (err, json) => {
+        PackageJson(pack.name, "latest", (err, json) => {
             if (err) {
                 Logger.log(err);
                 Logger.log("Setting 1.0.0");
@@ -48,7 +55,7 @@ new Tilda(pp(__dirname), {
                 }
             }
             if (json) {
-                Logger.log(">>> Old version is: " + json.version);
+                Logger.log(">>> Old version was: " + json.version);
             }
             Logger.log(">>> New version is: " + pack.version);
             cb(null, pack);
@@ -64,6 +71,7 @@ new Tilda(pp(__dirname), {
             Logger.log(`Updating package.json (version: ${newVersion})`);
             wJson(packPath, pack, next);
         }
+      , next => spawnNpm("install", { production: true }, { _showOutput: true }, next)
       , next => {
             Logger.log("Generating documentation.");
             spawno(`${__dirname}/node_modules/.bin/blah`, ["-f"], {
@@ -71,6 +79,10 @@ new Tilda(pp(__dirname), {
             }, next);
         }
       , next => {
+            if (a.options.c.value) {
+                Logger.log("Using the current branch.");
+                return next();
+            }
             let branchName = a.options.branch.value;
             Logger.log(`Switching on the ${branchName}`);
             spawno("git", ["checkout", "-B", branchName], { _showOutput: true }, next);
