@@ -1,0 +1,118 @@
+#!/usr/bin/env node
+
+"use strict";
+
+const rJson = require("r-json")
+    , wJson = require("w-json")
+    , PackageJson = require("package.json")
+    , Logger = require("bug-killer")
+    , Semver = require("semver")
+    , ReadUtf8 = require("read-utf8")
+    , Exec = require("child_process").execSync
+    , GitHub = require("gh.js")
+    , Tilda = require("tilda")
+    , pp = require("package-json-path")
+    , abs = require("abs")
+    , oneByOne = require("one-by-one")
+    ;
+
+new Tilda(pp(__dirname), {
+    options: [
+        {
+            opts: ["t", "token"]
+          , desc: "The GitHub token."
+          , type: String
+        }
+      , {
+            opts: ["V", "bump-version"]
+          , desc: "The semver tag to bump (major|minor|patch)"
+          , type: String
+          , default: "patch"
+        }
+      , {
+            opts: ["b", "branch"]
+          , desc: "The branch name to switch to."
+          , type: String
+          , default: "new-version"
+        }
+    ]
+}).main(a => {
+    let readToken = () => {
+        try {
+            Logger.log("Reading the ~/.github-config.json file since a token was not provided. If you want to provide a token, use the --token option.");
+            return require(abs("~/.github-config.json")).token;
+        } catch (e) {}
+        return null;
+    };
+
+    let config = {
+        token: a.options.token.value || readToken()
+    };
+
+    if (!config.token) {
+        return Logger.log(new Error("A token is required. Please provide it."));
+    }
+
+    let gh = new GitHub(config.token);
+    let packPath = pp(process.cwd());
+
+    let setPackVersion = (pack, cb) => {
+        PackageJson(pack.name, (err, json => {
+            if (err) {
+                Logger.log(err);
+                Logger.log("Setting 1.0.0");
+                pack.version = "1.0.0";
+            } else if (Semver.major(json.version) === 0) {
+                Logger.log("Since there is no 1.x.x release yet, setting 1.0.0.");
+                pack.version = "1.0.0";
+            } else {
+                pack.version = Semver.inc(json.version, a.options.V.value);
+                if (!pack.version) {
+                    return Logger.log(new Error("Invalid version bump option value."));
+                }
+            }
+            Logger.log(">>> Old version is: " + json.version);
+            Logger.log(">>> New version is: " + pack.version);
+            cb(null, pack);
+        })
+    };
+
+    let newVersion = null;
+    oneByone([
+        next => rJson(packPath, next)
+      , (next, pack) => setPackVersion(pack, next)
+      , (next, pack) => {
+            newVersion = pack.version;
+            Logger.log(`Updating package.json (version: ${newVersion})`);
+            wJson(packPath, pack, next);
+        }
+      , next => {
+            Logger.log("Generating documentation.");
+            spawno(`${__dirname}/node_modules/.bin/blah`, ["-f"], {
+                _showOutput: true
+            }, next);
+        }
+      , next => {
+            let branchName = a.options.branch.value;
+            Logger.log(`Switching on the ${branchName}`);
+            spawno("git", ["checkout", "-B", branchName], { _showOutput: true }, next);
+        }
+      , next => {
+            Logger.log("Adding the modified files.");
+            spawno("git", ["add", ".", "-A"], { _showOutput: true }, next);
+        }
+      , next => {
+            Logger.log("Committing the changes");
+            spawno("git", ["commit", "-m", `:arrow_up: ${newVersion} :tada:`], { _showOutput: true }, next);
+        }
+      , next => {
+            Logger.log("Pushing the new branch");
+            spawno("git", ["push", "--all"], { _showOutput: true }, next);
+        }
+    ], (err, data) => {
+        if (err) {
+            return Logger.log(err);
+        }
+        Logger.log("Done.");
+    });
+});
