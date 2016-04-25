@@ -57,7 +57,7 @@ new Tilda(pp(__dirname), {
     let packPath = pp(process.cwd());
 
     let setPackVersion = (pack, cb) => {
-        PackageJson(pack.name, (err, json => {
+        PackageJson(pack.name, (err, json) => {
             if (err) {
                 Logger.log(err);
                 Logger.log("Setting 1.0.0");
@@ -74,7 +74,7 @@ new Tilda(pp(__dirname), {
             Logger.log(">>> Old version is: " + json.version);
             Logger.log(">>> New version is: " + pack.version);
             cb(null, pack);
-        })
+        });
     };
 
     let newVersion = null;
