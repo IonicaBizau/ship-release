@@ -1,5 +1,6 @@
 {
-  "name": "pr-and-merge",
+  "name": "ship-release",
+  "description": "Publish new versions on GitHub and npm with ease.",
   "version": "1.0.0",
   "bin": {
     "launch-new-version": "./bin/launch-new-version",
@@ -11,8 +12,21 @@
   },
   "author": "Ionică Bizău <bizauionica@gmail.com> (http://ionicabizau.net)",
   "license": "MIT",
-  "description": "",
-  "dependencies": {},
+  "dependencies": {
+    "abs": "^1.2.1",
+    "barbe": "^2.2.1",
+    "bug-killer": "^4.2.1",
+    "find-value": "^1.0.1",
+    "gh.js": "^3.0.2",
+    "map-o": "^2.0.1",
+    "one-by-one": "^3.1.1",
+    "package-json-path": "^1.0.0",
+    "r-json": "^1.2.1",
+    "spawn-npm": "^1.1.0",
+    "spawno": "^1.0.0",
+    "tilda": "^4.2.1",
+    "ul": "^5.2.1"
+  },
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/IonicaBizau/foooo.git"

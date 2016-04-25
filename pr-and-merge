@@ -3,9 +3,7 @@
 "use strict";
 
 const rJson = require("r-json")
-    , wJson = require("w-json")
     , Logger = require("bug-killer")
-    , Semver = require("semver")
     , spawno = require("spawno")
     , spawnNpm = require("spawn-npm")
     , Tilda = require("tilda")
@@ -50,9 +48,10 @@ new Tilda(pp(__dirname), {
 }).main(a => {
     let config = {};
 
-    if (a.opts.c.value) {
+debugger
+    if (a.options.c.value) {
         try {
-            config = require(abs(a.opts.c.value));
+            config = require(abs(a.options.c.value));
         } catch (e) {
             Logger.log(e);
             return Logger.log(new Error("Cannot require the configuration file."));
@@ -71,9 +70,9 @@ new Tilda(pp(__dirname), {
     }
 
     config = ul.merge({
-        title: a.opts.title.value
-      , body: a.opts.description.value
-      , baseBranch: a.opts.b.value
+        title: a.options.title.value
+      , body: a.options.description.value
+      , baseBranch: a.options.b.value
     }, config);
 
     let gh = new GitHub(config.token)
@@ -100,7 +99,7 @@ new Tilda(pp(__dirname), {
       , (next, repo, url, pack) => {
             spawno("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
                 _displayOutput: true
-            }, (err, stdout, stderr) {
+            }, (err, stdout, stderr) => {
                 config.headBranch = stdout && stdout.trim();
                 next(stderr || err, repo, url, pack);
             });
