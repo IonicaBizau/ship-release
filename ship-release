@@ -284,7 +284,6 @@ new Tilda(pp(__dirname)).action([
       , next => {
             Logger.log("Creating pull request");
             config.baseBranch = config.baseBranch || repo.default_branch;
-            debugger
 
             mapO(config, v => v && barbe(v, ["<", ">"], { pack: pack, repo: repo }));
 
