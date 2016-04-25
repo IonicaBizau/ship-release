@@ -4,6 +4,9 @@
 
 const rJson = require("r-json")
     , Logger = require("bug-killer")
+    , wJson = require("w-json")
+    , PackageJson = require("package.json")
+    , Semver = require("semver")
     , spawno = require("spawno")
     , spawnNpm = require("spawn-npm")
     , Tilda = require("tilda")
@@ -17,38 +20,133 @@ const rJson = require("r-json")
     , mapO = require("map-o")
     ;
 
-new Tilda(pp(__dirname), {
-    options: [
-        {
-            opts: ["T", "token"]
-          , desc: "The GitHub token."
-          , type: String
+new Tilda(pp(__dirname)).action([
+    {
+        name: "bump"
+      , desc: "Bumps the version and creates a new branch."
+      , options: [
+            {
+                opts: ["V", "bump-version"]
+              , desc: "The semver tag to bump (major|minor|patch)"
+              , type: String
+              , default: "patch"
+            }
+          , {
+                opts: ["c", "current-branch"]
+              , desc: "If provided, an additional branch will not be created."
+              , type: Boolean
+              , default: false
+            }
+          , {
+                opts: ["b", "branch"]
+              , desc: "The branch name to switch to."
+              , type: String
+              , default: "new-version"
+            }
+        ]
+    }
+  , {
+        name: "ship"
+      , desc: "Creates a pull request with the changes, merge it in the main branch, publish it on npm and create a GitHub release."
+      , options: [
+            {
+                opts: ["T", "token"]
+              , desc: "The GitHub token."
+              , type: String
+            }
+          , {
+                opts: ["t", "title"]
+              , desc: "The pull request title."
+              , type: String
+            }
+          , {
+                opts: ["d", "description"]
+              , desc: "The pull request/release description."
+              , type: String
+            }
+          , {
+                opts: ["b", "base-branch"]
+              , desc: "The base branch (defaults to the repository main branch)."
+              , type: String
+            }
+          , {
+                opts: ["c", "config-path"]
+              , desc: "The path to a json/js file exporting "
+              , type: String
+            }
+        ]
+    }
+]).on("bump", a => {
+    let packPath = pp(process.cwd());
+    let setPackVersion = (pack, cb) => {
+        PackageJson(pack.name, "latest", (err, json) => {
+            if (err) {
+                Logger.log(err);
+                Logger.log("Setting 1.0.0");
+                pack.version = "1.0.0";
+            } else if (Semver.major(json.version) === 0) {
+                Logger.log("Since there is no 1.x.x release yet, setting 1.0.0.");
+                pack.version = "1.0.0";
+            } else {
+                pack.version = Semver.inc(json.version, a.options.V.value);
+                if (!pack.version) {
+                    return Logger.log(new Error("Invalid version bump option value."));
+                }
+            }
+            if (json) {
+                Logger.log(">>> Old version was: " + json.version);
+            }
+            Logger.log(">>> New version is: " + pack.version);
+            cb(null, pack);
+        });
+    };
+
+    let newVersion = null;
+    oneByOne([
+        next => rJson(packPath, next)
+      , (next, pack) => setPackVersion(pack, next)
+      , (next, pack) => {
+            newVersion = pack.version;
+            Logger.log(`Updating package.json (version: ${newVersion})`);
+            wJson(packPath, pack, next);
         }
-      , {
-            opts: ["t", "title"]
-          , desc: "The pull request title."
-          , type: String
+      , next => spawnNpm("install", { production: true }, { _showOutput: true }, next)
+      , next => {
+            Logger.log("Generating documentation.");
+            spawno(`${__dirname}/node_modules/.bin/blah`, ["-f"], {
+                _showOutput: true
+            }, next);
         }
-      , {
-            opts: ["d", "description"]
-          , desc: "The pull request/release description."
-          , type: String
+      , next => {
+            if (a.options.c.value) {
+                Logger.log("Using the current branch.");
+                return next();
+            }
+            let branchName = a.options.branch.value;
+            Logger.log(`Switching on the ${branchName}`);
+            spawno("git", ["checkout", "-B", branchName], { _showOutput: true }, next);
         }
-      , {
-            opts: ["b", "base-branch"]
-          , desc: "The base branch (defaults to the repository main branch)."
-          , type: String
+      , next => {
+            Logger.log("Adding the modified files.");
+            spawno("git", ["add", ".", "-A"], { _showOutput: true }, next);
         }
-      , {
-            opts: ["c", "config-path"]
-          , desc: "The path to a json/js file exporting "
-          , type: String
+      , next => {
+            Logger.log("Committing the changes");
+            spawno("git", ["commit", "-m", `:arrow_up: ${newVersion} :tada:`], { _showOutput: true }, next);
         }
-    ]
-}).main(a => {
+      , next => {
+            Logger.log("Pushing the new branch");
+            spawno("git", ["push", "--all"], { _showOutput: true }, next);
+        }
+    ], (err, data) => {
+        if (err) {
+            return Logger.log(err);
+        }
+        Logger.log("Done.");
+    });
+}).on("ship", a => {
     let config = {};
 
-debugger
     if (a.options.c.value) {
         try {
             config = require(abs(a.options.c.value));
