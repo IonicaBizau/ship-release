@@ -14,14 +14,81 @@ const rJson = require("r-json")
     , abs = require("abs")
     , oneByOne = require("one-by-one")
     , GitHub = require("gh.js")
+    , gitUrlParse = require("git-url-parse")
     , findValue = require("find-value")
     , barbe = require("barbe")
     , ul = require("ul")
     , mapO = require("map-o")
     ;
 
+let done = (err, data) => {
+    if (err) {
+        return Logger.log(err);
+    }
+    Logger.log("Done.");
+};
+
+let commitAll = msg => {
+    return cb => {
+        oneByOne([
+            next => {
+                Logger.log("Adding the modified files.");
+                spawno("git", ["add", ".", "-A"], { _showOutput: true }, next);
+            }
+          , next => {
+                Logger.log("Committing the changes");
+                spawno("git", ["commit", "-m", msg], { _showOutput: true }, next);
+            }
+          , next => {
+                Logger.log("Pushing the new branch");
+                spawno("git", ["push", "--all"], { _showOutput: true }, next);
+            }
+        ], cb);
+    };
+};
+
+let npmInstall = next => {
+    spawnNpm("install", { production: true }, { _showOutput: true }, next)
+};
+
+let generateDocs = next => {
+    Logger.log("Generating documentation.");
+    spawno(`${__dirname}/node_modules/.bin/blah`, ["-f"], {
+        _showOutput: true
+    }, next);
+};
+
+let currentBranch = cb => {
+    spawno("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+        _displayOutput: true
+    }, (err, stdout, stderr) => {
+        stdout = stdout && stdout.trim();
+        cb(stderr || err, stdout);
+    });
+};
+
 new Tilda(pp(__dirname)).action([
     {
+        name: "branch"
+      , desc: "Creates a new branch and commits the changes."
+      , options: [
+            {
+                name: "message"
+              , opts: ["m", "message"]
+              , desc: "The commit message."
+              , type: String
+              , default: "Working on the new version."
+            }
+          , {
+                opts: ["n", "name"]
+              , name: "name"
+              , desc: "The branch name."
+              , type: String
+              , default: "new-version"
+            }
+        ]
+    }
+  , {
         name: "bump"
       , desc: "Bumps the version and creates a new branch."
       , options: [
@@ -46,7 +113,7 @@ new Tilda(pp(__dirname)).action([
         ]
     }
   , {
-        name: "ship"
+        name: "publish"
       , desc: "Creates a pull request with the changes, merge it in the main branch, publish it on npm and create a GitHub release."
       , options: [
             {
@@ -76,7 +143,16 @@ new Tilda(pp(__dirname)).action([
             }
         ]
     }
-]).on("bump", a => {
+]).on("branch", a => {
+    oneByOne([
+        next => {
+            let branchName = a.options.name.value;
+            Logger.log(`Creating and switching on the ${branchName} branch.`);
+            spawno("git", ["checkout", "-B", branchName], { _showOutput: true }, next);
+        }
+      , commitAll(a.options.message.value)
+    ], done);
+}).on("bump", a => {
     let packPath = pp(process.cwd());
     let setPackVersion = (pack, cb) => {
         PackageJson(pack.name, "latest", (err, json) => {
@@ -110,41 +186,28 @@ new Tilda(pp(__dirname)).action([
             Logger.log(`Updating package.json (version: ${newVersion})`);
             wJson(packPath, pack, next);
         }
-      , next => spawnNpm("install", { production: true }, { _showOutput: true }, next)
-      , next => {
-            Logger.log("Generating documentation.");
-            spawno(`${__dirname}/node_modules/.bin/blah`, ["-f"], {
-                _showOutput: true
-            }, next);
-        }
-      , next => {
+      , npmInstall
+      , generateDocs
+      , currentBranch
+      , (next, currentBranch) => {
+            let branchName = a.options.branch.value;
+
+            if (!a.options.c.is_provided) {
+                // TODO Check if default branch. Too lazy right now to do that.
+                a.options.c.value = currentBranch !== "master" && currentBranch !== "gh-pages";
+            }
+
             if (a.options.c.value) {
                 Logger.log("Using the current branch.");
                 return next();
             }
-            let branchName = a.options.branch.value;
+
             Logger.log(`Switching on the ${branchName}`);
             spawno("git", ["checkout", "-B", branchName], { _showOutput: true }, next);
         }
-      , next => {
-            Logger.log("Adding the modified files.");
-            spawno("git", ["add", ".", "-A"], { _showOutput: true }, next);
-        }
-      , next => {
-            Logger.log("Committing the changes");
-            spawno("git", ["commit", "-m", `:arrow_up: ${newVersion} :tada:`], { _showOutput: true }, next);
-        }
-      , next => {
-            Logger.log("Pushing the new branch");
-            spawno("git", ["push", "--all"], { _showOutput: true }, next);
-        }
-    ], (err, data) => {
-        if (err) {
-            return Logger.log(err);
-        }
-        Logger.log("Done.");
-    });
-}).on("ship", a => {
+      , next => commitAll(`:arrow_up: ${newVersion} :tada:`)(next)
+    ], done);
+}).on("publish", a => {
     let config = {};
 
     if (a.options.c.value) {
@@ -168,47 +231,64 @@ new Tilda(pp(__dirname)).action([
     }
 
     config = ul.merge({
-        title: a.options.title.value
+        title: a.options.title.value || "<pack.name> <pack.version>"
       , body: a.options.description.value
       , baseBranch: a.options.b.value
     }, config);
 
+    if (!config.body) {
+        return Logger.log(new Error("The pull request description is required."));
+    }
+
     let gh = new GitHub(config.token)
       , packPath = pp(process.cwd())
+      , fullName = null
+      , repo = null
+      , url = null
+      , pack = null
       ;
 
     oneByOne([
         next => rJson(packPath, next)
-      , (next, pack) => {
+      , (next, _pack) => {
+            pack = _pack;
+
             let repoUrl = findValue(pack, "repository.url");
             if (!repoUrl) {
                 return next(new Error("Cannot find the repository url in package.json"));
             }
-            let url = GitUrlParse(repoUrl);
-            if (url.source !== "github") {
+
+            url = gitUrlParse(repoUrl);
+            if (url.source !== "github.com") {
                 return next(new Error("The repository is not hosted on GitHub."));
             }
 
             Logger.log("Getting repo info");
             config.version = pack.version;
-
-            gh.get(`repos${url.pathname}`, (err, repo) => next(err, repo, url, pack));
-        }
-      , (next, repo, url, pack) => {
-            spawno("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
-                _displayOutput: true
-            }, (err, stdout, stderr) => {
-                config.headBranch = stdout && stdout.trim();
-                next(stderr || err, repo, url, pack);
+            fullName = url.full_name;
+            gh.get(`repos/${fullName}`, (err, _repo) => {
+                repo = _repo;
+                next(err, repo)
             });
         }
-      , (next, repo, url, pack) => {
+      , npmInstall
+      , generateDocs
+      , commitAll("Updated docs")
+      , next => {
+            currentBranch((err, cBranch) => {
+                if (err) { return next(err); }
+                config.headBranch = cBranch;
+                next(null, repo, url, pack);
+            });
+        }
+      , next => {
             Logger.log("Creating pull request");
-            var defaultBranch = config.baseBranch || repo.default_branch;
+            config.baseBranch = config.baseBranch || repo.default_branch;
+            debugger
 
-            mapO(config, v => barbe(v, ["<", ">"], { pack: pack, repo: repo }));
+            mapO(config, v => v && barbe(v, ["<", ">"], { pack: pack, repo: repo }));
 
-            gh.get(`repos${url.pathname}/pulls`, {
+            gh.get(`repos/${fullName}/pulls`, {
                 data: {
                     title: config.title
                   , body: config.body
@@ -242,11 +322,11 @@ new Tilda(pp(__dirname)).action([
         }
       , next => {
             Logger.log("Creating new GitHub release.");
-            gh.get("repos" + url.pathname + "/releases", {
+            gh.get(`repos/${fullName}/releases`, {
                 data: {
                     tag_name: config.version
                   , name: config.version
-                  , body: config.comment
+                  , body: config.body
                 }
             }, next);
         }
@@ -259,10 +339,5 @@ new Tilda(pp(__dirname)).action([
             Logger.log(`Deleting the ${config.headBranch} branch on GitHub.`);
             spawno("git", ["push", "origin", "--delete", config.headBranch], { _showOutput: true }, next);
         }
-    ], (err, data) => {
-        if (err) {
-            return Logger.log(err);
-        }
-        Logger.log("Done.");
-    });
+    ], done);
 });
