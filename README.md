@@ -23,7 +23,6 @@ Usage: launch-new-version [options]
 A cli tool to launch a new version of a Node.js package hosted on GitHub.
 
 Options:
-  -t, --token         The GitHub token.
   -V, --bump-version  The semver tag to bump (major|minor|patch)
   -b, --branch        The branch name to switch to.
   -v, --version       Displays version information.

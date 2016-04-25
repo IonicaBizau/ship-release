@@ -7,9 +7,7 @@ const rJson = require("r-json")
     , PackageJson = require("package.json")
     , Logger = require("bug-killer")
     , Semver = require("semver")
-    , ReadUtf8 = require("read-utf8")
-    , Exec = require("child_process").execSync
-    , GitHub = require("gh.js")
+    , spawno = require("spawno")
     , Tilda = require("tilda")
     , pp = require("package-json-path")
     , abs = require("abs")
@@ -19,11 +17,6 @@ const rJson = require("r-json")
 new Tilda(pp(__dirname), {
     options: [
         {
-            opts: ["t", "token"]
-          , desc: "The GitHub token."
-          , type: String
-        }
-      , {
             opts: ["V", "bump-version"]
           , desc: "The semver tag to bump (major|minor|patch)"
           , type: String
@@ -37,23 +30,6 @@ new Tilda(pp(__dirname), {
         }
     ]
 }).main(a => {
-    let readToken = () => {
-        try {
-            Logger.log("Reading the ~/.github-config.json file since a token was not provided. If you want to provide a token, use the --token option.");
-            return require(abs("~/.github-config.json")).token;
-        } catch (e) {}
-        return null;
-    };
-
-    let config = {
-        token: a.options.token.value || readToken()
-    };
-
-    if (!config.token) {
-        return Logger.log(new Error("A token is required. Please provide it."));
-    }
-
-    let gh = new GitHub(config.token);
     let packPath = pp(process.cwd());
 
     let setPackVersion = (pack, cb) => {
@@ -71,14 +47,16 @@ new Tilda(pp(__dirname), {
                     return Logger.log(new Error("Invalid version bump option value."));
                 }
             }
-            Logger.log(">>> Old version is: " + json.version);
+            if (json) {
+                Logger.log(">>> Old version is: " + json.version);
+            }
             Logger.log(">>> New version is: " + pack.version);
             cb(null, pack);
         });
     };
 
     let newVersion = null;
-    oneByone([
+    oneByOne([
         next => rJson(packPath, next)
       , (next, pack) => setPackVersion(pack, next)
       , (next, pack) => {
