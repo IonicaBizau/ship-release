@@ -1,11 +1,11 @@
 {
-  "name": "foooo",
+  "name": "pr-and-merge",
   "version": "1.0.0",
   "bin": {
     "launch-new-version": "./bin/launch-new-version",
     "pr-and-merge": "./bin/pr-and-merge"
   },
-  "main": "lib/index.js",
+  "main": "./pr-and-merge",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

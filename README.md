@@ -1,7 +1,14 @@
 
-# foooo [![PayPal](https://img.shields.io/badge/%24-paypal-f39c12.svg)][paypal-donations] [![Version](https://img.shields.io/npm/v/foooo.svg)](https://www.npmjs.com/package/foooo) [![Downloads](https://img.shields.io/npm/dt/foooo.svg)](https://www.npmjs.com/package/foooo) [![Get help on Codementor](https://cdn.codementor.io/badges/get_help_github.svg)](https://www.codementor.io/johnnyb?utm_source=github&utm_medium=button&utm_term=johnnyb&utm_campaign=github)
+# pr-and-merge [![PayPal](https://img.shields.io/badge/%24-paypal-f39c12.svg)][paypal-donations] [![Version](https://img.shields.io/npm/v/pr-and-merge.svg)](https://www.npmjs.com/package/pr-and-merge) [![Downloads](https://img.shields.io/npm/dt/pr-and-merge.svg)](https://www.npmjs.com/package/pr-and-merge) [![Get help on Codementor](https://cdn.codementor.io/badges/get_help_github.svg)](https://www.codementor.io/johnnyb?utm_source=github&utm_medium=button&utm_term=johnnyb&utm_campaign=github)
 
 >
+
+## :cloud: Installation
+
+```sh
+$ npm i --save pr-and-merge
+```
+
 
 ## :yum: How to contribute
 Have an idea? Found a bug? See [how to contribute][contributing].
