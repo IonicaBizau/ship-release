@@ -186,8 +186,8 @@ new Tilda(pp(__dirname)).action([
             Logger.log(`Updating package.json (version: ${newVersion})`);
             wJson(packPath, pack, next);
         }
-      , npmInstall
-      , generateDocs
+      //, npmInstall
+      //, generateDocs
       , currentBranch
       , (next, currentBranch) => {
             let branchName = a.options.branch.value;
