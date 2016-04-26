@@ -13,7 +13,7 @@
   "license": "MIT",
   "dependencies": {
     "abs": "^1.2.1",
-    "barbe": "^2.2.1",
+    "barbe": "^3.0.4",
     "bug-killer": "^4.2.1",
     "find-value": "^1.0.1",
     "gh.js": "^3.0.2",
