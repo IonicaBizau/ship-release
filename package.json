@@ -5,7 +5,7 @@
   "bin": {
     "ship-release": "./bin/ship-release.js"
   },
-  "main": "./bin/ship-release.js",
+  "main": "lib/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
