@@ -62,7 +62,7 @@ let generateDocs = next => {
 
 let currentBranch = cb => {
     spawno("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
-        _displayOutput: true
+        _showOutput: true
     }, (err, stdout, stderr) => {
         stdout = stdout && stdout.trim();
         cb(stderr || err, stdout);
@@ -318,7 +318,7 @@ new Tilda(pp(`${__dirname}/..`)).action([
       , next => {
             Logger.log("Publishing on npm.");
             spawno(BABEL_IT_PATH, {
-                _displayOutput: true
+                _showOutput: true
             }, next);
         }
       , next => {
