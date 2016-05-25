@@ -55,5 +55,12 @@
     "menu/",
     "cli.js",
     "index.js"
+  ],
+  "devDependencies": {},
+  "keywords": [
+    "ship",
+    "release",
+    "publish",
+    "npm"
   ]
 }
