@@ -43,5 +43,17 @@
   "homepage": "https://github.com/IonicaBizau/ship-release#readme",
   "blah": {
     "h_img": "http://i.imgur.com/gOm6qum.png"
-  }
+  },
+  "files": [
+    "bin/",
+    "app/",
+    "lib/",
+    "dist/",
+    "src/",
+    "scripts/",
+    "resources/",
+    "menu/",
+    "cli.js",
+    "index.js"
+  ]
 }
