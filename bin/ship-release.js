@@ -19,6 +19,7 @@ const rJson = require("r-json")
     , barbe = require("barbe")
     , ul = require("ul")
     , mapO = require("map-o")
+    , BABEL_IT_PATH = require("babel-it/bin/babel-it.js")
     ;
 
 let done = (err, data) => {
@@ -315,9 +316,9 @@ new Tilda(pp(__dirname)).action([
         }
       , next => {
             Logger.log("Publishing on npm.");
-            spawnNpm("publish", {}, {
+            spawn(BABEL_IT_PATH, {
                 _displayOutput: true
-            }, next)
+            }, next);
         }
       , next => {
             Logger.log("Creating new GitHub release.");
