@@ -44,6 +44,13 @@ Documentation can be found at https://github.com/IonicaBizau/ship-release#readme
 Have an idea? Found a bug? See [how to contribute][contributing].
 
 
+## :sparkles: Related
+
+ - [`babel-it`](https://github.com/IonicaBizau/babel-it#readme)—Babelify your code before `npm publish`.
+ - [`dist-it`](https://github.com/IonicaBizau/dist-it)—Generate minified bundles from modular inputs using Browserify.
+
+
+
 ## :scroll: License
 
 [MIT][license] © [Ionică Bizău][website]
