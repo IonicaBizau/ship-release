@@ -19,6 +19,7 @@ const rJson = require("r-json")
     , barbe = require("barbe")
     , ul = require("ul")
     , mapO = require("map-o")
+    , BLAH_PATH = require.resolve("blah/bin/blah")
     , BABEL_IT_PATH = require.resolve("babel-it/bin/babel-it.js")
     ;
 
@@ -54,7 +55,7 @@ let npmInstall = next => {
 
 let generateDocs = next => {
     Logger.log("Generating documentation.");
-    spawno(`${__dirname}/node_modules/.bin/blah`, ["-f"], {
+    spawno(BLAH_PATH, ["-f"], {
         _showOutput: true
     }, next);
 };
@@ -316,7 +317,7 @@ new Tilda(pp(`${__dirname}/..`)).action([
         }
       , next => {
             Logger.log("Publishing on npm.");
-            spawn(BABEL_IT_PATH, {
+            spawno(BABEL_IT_PATH, {
                 _displayOutput: true
             }, next);
         }
