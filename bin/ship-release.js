@@ -19,7 +19,7 @@ const rJson = require("r-json")
     , barbe = require("barbe")
     , ul = require("ul")
     , mapO = require("map-o")
-    , BABEL_IT_PATH = require("babel-it/bin/babel-it.js")
+    , BABEL_IT_PATH = require.resolve("babel-it/bin/babel-it.js")
     ;
 
 let done = (err, data) => {
@@ -68,7 +68,7 @@ let currentBranch = cb => {
     });
 };
 
-new Tilda(pp(__dirname)).action([
+new Tilda(pp(`${__dirname}/..`)).action([
     {
         name: "branch"
       , desc: "Creates a new branch and commits the changes."
