@@ -1,17 +1,48 @@
 
-# pr-and-merge [![PayPal](https://img.shields.io/badge/%24-paypal-f39c12.svg)][paypal-donations] [![Version](https://img.shields.io/npm/v/pr-and-merge.svg)](https://www.npmjs.com/package/pr-and-merge) [![Downloads](https://img.shields.io/npm/dt/pr-and-merge.svg)](https://www.npmjs.com/package/pr-and-merge) [![Get help on Codementor](https://cdn.codementor.io/badges/get_help_github.svg)](https://www.codementor.io/johnnyb?utm_source=github&utm_medium=button&utm_term=johnnyb&utm_campaign=github)
+[![ship-release](http://i.imgur.com/gOm6qum.png)](#)
 
->
+# `$ ship-release`
+ [![PayPal](https://img.shields.io/badge/%24-paypal-f39c12.svg)][paypal-donations] [![Version](https://img.shields.io/npm/v/ship-release.svg)](https://www.npmjs.com/package/ship-release) [![Downloads](https://img.shields.io/npm/dt/ship-release.svg)](https://www.npmjs.com/package/ship-release) [![Get help on Codementor](https://cdn.codementor.io/badges/get_help_github.svg)](https://www.codementor.io/johnnyb?utm_source=github&utm_medium=button&utm_term=johnnyb&utm_campaign=github)
+----
+
+> Publish new versions on GitHub and npm with ease.
 
 ## :cloud: Installation
 
+You can install the package globally and use it as command line tool:
+
+
 ```sh
-$ npm i --save pr-and-merge
+$ npm i -g ship-release
 ```
 
 
+Then, run `ship-release --help` and see what the CLI tool can do.
+
+
+```
+$ ship-release --help
+Usage: ship-release <command> [options]
+
+Publish new versions on GitHub and npm with ease.
+
+Commands:
+  branch   Creates a new branch and commits the changes.
+  bump     Bumps the version and creates a new branch.
+  publish  Creates a pull request with the changes, merge it
+           in the main branch, publish it on npm and create a
+           GitHub release.
+
+Options:
+  -v, --version  Displays version information.
+  -h, --help     Displays this help.
+
+Documentation can be found at https://github.com/IonicaBizau/ship-release#readme.
+```
+
 ## :yum: How to contribute
 Have an idea? Found a bug? See [how to contribute][contributing].
+
 
 ## :scroll: License
 

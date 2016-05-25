@@ -3,9 +3,9 @@
   "description": "Publish new versions on GitHub and npm with ease.",
   "version": "1.0.0-beta1",
   "bin": {
-    "ship-release": "./ship-release"
+    "ship-release": "./bin/ship-release"
   },
-  "main": "./ship-release",
+  "main": "lib/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -13,6 +13,7 @@
   "license": "MIT",
   "dependencies": {
     "abs": "^1.2.1",
+    "babel-it": "^1.0.6",
     "barbe": "^3.0.4",
     "blah": "^3.1.2",
     "bug-killer": "^4.2.1",
@@ -39,5 +40,8 @@
   "bugs": {
     "url": "https://github.com/IonicaBizau/ship-release/issues"
   },
-  "homepage": "https://github.com/IonicaBizau/ship-release#readme"
+  "homepage": "https://github.com/IonicaBizau/ship-release#readme",
+  "blah": {
+    "h_img": "http://i.imgur.com/gOm6qum.png"
+  }
 }
