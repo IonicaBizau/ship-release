@@ -1,7 +1,7 @@
 {
   "name": "ship-release",
   "description": "Publish new versions on GitHub and npm with ease.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "bin": {
     "ship-release": "./bin/ship-release.js"
   },
@@ -42,7 +42,11 @@
   },
   "homepage": "https://github.com/IonicaBizau/ship-release#readme",
   "blah": {
-    "h_img": "http://i.imgur.com/gOm6qum.png"
+    "h_img": "http://i.imgur.com/gOm6qum.png",
+    "related": [
+      "babel-it",
+      "dist-it"
+    ]
   },
   "files": [
     "bin/",
