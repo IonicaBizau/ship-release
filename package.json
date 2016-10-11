@@ -1,7 +1,7 @@
 {
   "name": "ship-release",
   "description": "Publish new versions on GitHub and npm with ease.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "bin": {
     "ship-release": "./bin/ship-release.js"
   },
@@ -54,9 +54,9 @@
     "lib/",
     "dist/",
     "src/",
-    "scripts/",
     "resources/",
     "menu/",
+    "scripts/",
     "cli.js",
     "index.js"
   ],
