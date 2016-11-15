@@ -35,34 +35,34 @@ let commitAll = msg => {
         oneByOne([
             next => {
                 Logger.log("Adding the modified files.");
-                spawno("git", ["add", ".", "-A"], { _showOutput: true }, next);
+                spawno("git", ["add", ".", "-A"], { output: true }, next);
             }
           , next => {
                 Logger.log("Committing the changes");
-                spawno("git", ["commit", "-m", msg], { _showOutput: true }, next);
+                spawno("git", ["commit", "-m", msg], { output: true }, next);
             }
           , next => {
                 Logger.log("Pushing the new branch");
-                spawno("git", ["push", "--all"], { _showOutput: true }, next);
+                spawno("git", ["push", "--all"], { output: true }, next);
             }
         ], cb);
     };
 };
 
 let npmInstall = next => {
-    spawnNpm("install", { production: true }, { _showOutput: true }, next)
+    spawnNpm("install", { production: true }, { output: true }, next)
 };
 
 let generateDocs = next => {
     Logger.log("Generating documentation.");
     spawno(BLAH_PATH, ["-f"], {
-        _showOutput: true
+        output: true
     }, next);
 };
 
 let currentBranch = cb => {
     spawno("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
-        _showOutput: true
+        output: true
     }, (err, stdout, stderr) => {
         stdout = stdout && stdout.trim();
         cb(stderr || err, stdout);
@@ -150,7 +150,7 @@ new Tilda(pp(`${__dirname}/..`)).action([
         next => {
             let branchName = a.options.name.value;
             Logger.log(`Creating and switching on the ${branchName} branch.`);
-            spawno("git", ["checkout", "-B", branchName], { _showOutput: true }, next);
+            spawno("git", ["checkout", "-B", branchName], { output: true }, next);
         }
       , commitAll(a.options.message.value)
     ], done);
@@ -205,7 +205,7 @@ new Tilda(pp(`${__dirname}/..`)).action([
             }
 
             Logger.log(`Switching on the ${branchName}`);
-            spawno("git", ["checkout", "-B", branchName], { _showOutput: true }, next);
+            spawno("git", ["checkout", "-B", branchName], { output: true }, next);
         }
       , next => commitAll(`:arrow_up: ${newVersion} :tada:`)(next)
     ], done);
@@ -301,24 +301,24 @@ new Tilda(pp(`${__dirname}/..`)).action([
       , next => {
             Logger.log("Created pull request");
             Logger.log(`Switching to ${config.baseBranch}`);
-            spawno("git", ["checkout", config.baseBranch], { _showOutput: true }, next);
+            spawno("git", ["checkout", config.baseBranch], { output: true }, next);
         }
       , next => {
             Logger.log("Updating from GitHub");
-            spawno("git", ["pull", "origin", config.baseBranch], { _showOutput: true }, next);
+            spawno("git", ["pull", "origin", config.baseBranch], { output: true }, next);
         }
       , next => {
             Logger.log(`Merging ${config.headBranch} -> ${config.baseBranch}`);
-            spawno("git", ["merge", config.headBranch], { _showOutput: true }, next);
+            spawno("git", ["merge", config.headBranch], { output: true }, next);
         }
       , next => {
             Logger.log("Push everything on GitHub");
-            spawno("git", ["push", "--all"], { _showOutput: true }, next);
+            spawno("git", ["push", "--all"], { output: true }, next);
         }
       , next => {
             Logger.log("Publishing on npm.");
             spawno(BABEL_IT_PATH, {
-                _showOutput: true
+                output: true
             }, next);
         }
       , next => {
@@ -334,11 +334,11 @@ new Tilda(pp(`${__dirname}/..`)).action([
       , next => {
             Logger.log("Created new release.");
             Logger.log(`Deleting the ${config.headBranch} branch locally.`);
-            spawno("git", ["branch", "-d", config.headBranch], { _showOutput: true }, next);
+            spawno("git", ["branch", "-d", config.headBranch], { output: true }, next);
         }
       , next => {
             Logger.log(`Deleting the ${config.headBranch} branch on GitHub.`);
-            spawno("git", ["push", "origin", "--delete", config.headBranch], { _showOutput: true }, next);
+            spawno("git", ["push", "origin", "--delete", config.headBranch], { output: true }, next);
         }
     ], done);
 });
