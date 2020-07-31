@@ -289,6 +289,7 @@ new Tilda(pp(`${__dirname}/..`)).action([
 
             mapO(config, v => v && barbe(v, ["<", ">"], { pack: pack, repo: repo }));
 
+            debugger
             gh.get(`repos/${fullName}/pulls`, {
                 data: {
                     title: config.title
@@ -299,6 +300,7 @@ new Tilda(pp(`${__dirname}/..`)).action([
             }, next);
         }
       , next => {
+            debugger
             Logger.log("Created pull request");
             Logger.log(`Switching to ${config.baseBranch}`);
             spawno("git", ["checkout", config.baseBranch], { output: true }, next);
