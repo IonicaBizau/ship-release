@@ -289,13 +289,15 @@ new Tilda(pp(`${__dirname}/..`)).action([
 
             mapO(config, v => v && barbe(v, ["<", ">"], { pack: pack, repo: repo }));
 
-            debugger
             gh.get(`repos/${fullName}/pulls`, {
                 data: {
                     title: config.title
                   , body: config.body
                   , head: config.headBranch
                   , base: config.baseBranch
+                },
+                headers: {
+                    Accept: "application/vnd.github.sailor-v-preview+json"
                 }
             }, next);
         }
