@@ -80,8 +80,8 @@ Commands:
            GitHub release.
 
 Options:
-  -h, --help     Displays this help.
   -v, --version  Displays version information.
+  -h, --help     Displays this help.
 
 Documentation can be found at https://github.com/IonicaBizau/ship-release#readme.
 ```
