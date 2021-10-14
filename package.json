@@ -1,7 +1,7 @@
 {
   "name": "ship-release",
   "description": "Publish new versions on GitHub and npm with ease.",
-  "version": "4.2.0",
+  "version": "4.3.0",
   "bin": {
     "ship-release": "./bin/ship-release.js"
   },
@@ -18,7 +18,7 @@
     "blah": "^5.2.1",
     "bug-killer": "^4.2.1",
     "find-value": "^1.0.12",
-    "gh.js": "^3.1.1",
+    "gh.js": "^3.2.0",
     "git-up": "^4.0.5",
     "git-url-parse": "^11.6.0",
     "map-o": "^2.0.10",
