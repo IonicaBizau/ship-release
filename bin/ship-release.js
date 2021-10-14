@@ -263,6 +263,7 @@ new Tilda(pp(__dirname + "/..")).action([{
             return v && barbe(v, ["<", ">"], { pack: pack, repo: repo });
         });
 
+        debugger
         gh.get("repos/" + fullName + "/pulls", {
             data: {
                 title: config.title,
@@ -271,7 +272,7 @@ new Tilda(pp(__dirname + "/..")).action([{
                 base: config.baseBranch
             },
             headers: {
-                Accept: "application/vnd.github.sailor-v-preview+json"
+                Accept: "application/vnd.github.sailor-v-preview+json, application/vnd.github.v3+json"
             }
         }, next);
     }, function (next) {
