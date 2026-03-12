@@ -3,69 +3,65 @@
 
 "use strict";
 
-var rJson = require("r-json"),
-    Logger = require("bug-killer"),
-    wJson = require("w-json"),
-    PackageJson = require("package.json"),
-    Semver = require("semver"),
-    spawno = require("spawno"),
-    spawnNpm = require("spawn-npm"),
-    Tilda = require("tilda"),
-    pp = require("package-json-path"),
-    abs = require("abs"),
-    oneByOne = require("one-by-one"),
-    GitHub = require("gh.js"),
-    gitUrlParse = require("git-url-parse"),
-    findValue = require("find-value"),
-    barbe = require("barbe"),
-    ul = require("ul"),
-    mapO = require("map-o"),
-    BLAH_PATH = require.resolve("blah/bin/blah"),
-    BABEL_IT_PATH = require.resolve("babel-it/bin/babel-it.js");
+const rJson = require("r-json"),
+      Logger = require("bug-killer"),
+      wJson = require("w-json"),
+      PackageJson = require("pkg.json"),
+      Semver = require("semver"),
+      spawno = require("spawno").promise,
+      Tilda = require("tilda"),
+      pp = require("package-json-path"),
+      abs = require("abs"),
+      GitHub = require("gh.js"),
+      gitUrlParse = require("git-url-parse"),
+      findValue = require("find-value"),
+      barbe = require("barbe"),
+      ul = require("ul"),
+      mapO = require("map-o"),
+      BLAH_PATH = require.resolve("blah/bin/blah");
 
-var done = function done(err, data) {
+const packageJsonPromise = name => new Promise((resolve, reject) => {
+    PackageJson(name, "latest", function (err, json) {
+        if (err) {
+            return reject(err);
+        }
+        resolve(json);
+    });
+});
+
+const done = err => {
     if (err) {
         return Logger.log(err);
     }
     Logger.log("Done.");
 };
 
-var commitAll = function commitAll(msg) {
-    return function (cb) {
-        oneByOne([function (next) {
-            Logger.log("Adding the modified files.");
-            spawno("git", ["add", ".", "-A"], { output: true }, next);
-        }, function (next) {
-            Logger.log("Committing the changes");
-            spawno("git", ["commit", "-m", msg], { output: true }, next);
-        }, function (next) {
-            Logger.log("Pushing the new branch");
-            spawno("git", ["push", "--all"], { output: true }, next);
-        }], cb);
-    };
+const commitAll = async msg => {
+    Logger.log("Adding the modified files.");
+    await spawno("git", ["add", ".", "-A"], { output: true });
+
+    Logger.log("Committing the changes");
+    await spawno("git", ["commit", "-m", msg], { output: true });
+
+    Logger.log("Pushing the new branch");
+    await spawno("git", ["push", "--all"], { output: true });
 };
 
-var npmInstall = function npmInstall(next) {
-    spawnNpm("install", { production: true }, { output: true }, next);
+const npmInstall = async () => {
+    await spawno("npm", ["install", "--production"], { output: true });
 };
 
-var generateDocs = function generateDocs(next) {
+const generateDocs = async () => {
     Logger.log("Generating documentation.");
-    spawno(BLAH_PATH, ["-f"], {
-        output: true
-    }, next);
+    await spawno(BLAH_PATH, ["-f"], { output: true });
 };
 
-var currentBranch = function currentBranch(cb) {
-    spawno("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
-        output: true
-    }, function (err, stdout, stderr) {
-        stdout = stdout && stdout.trim();
-        cb(stderr || err, stdout);
-    });
+const currentBranch = async () => {
+    const { stdout, stderr } = await spawno("git", ["rev-parse", "--abbrev-ref", "HEAD"], { output: true });
+    return (stderr || stdout || "").trim();
 };
 
-new Tilda(pp(__dirname + "/..")).action([{
+const app = new Tilda(pp(__dirname + "/..")).action([{
     name: "branch",
     desc: "Creates a new branch and commits the changes.",
     options: [{
@@ -124,21 +120,24 @@ new Tilda(pp(__dirname + "/..")).action([{
         desc: "The path to a json/js file exporting ",
         type: String
     }]
-}]).on("branch", function (a) {
-    oneByOne([function (next) {
-        var branchName = a.options.name.value;
+}]).on("branch", async a => {
+    try {
+        const branchName = a.options.name.value;
         Logger.log("Creating and switching on the " + branchName + " branch.");
-        spawno("git", ["checkout", "-B", branchName], { output: true }, next);
-    }, commitAll(a.options.message.value)], done);
-}).on("bump", function (a) {
-    var packPath = pp(process.cwd());
-    var setPackVersion = function setPackVersion(pack, cb) {
-        PackageJson(pack.name, "latest", function (err, json) {
-            if (err) {
-                Logger.log(err);
-                Logger.log("Setting 1.0.0");
-                pack.version = "1.0.0";
-            } else if (Semver.major(json.version) === 0) {
+        await spawno("git", ["checkout", "-B", branchName], { output: true });
+        await commitAll(a.options.message.value);
+    } catch (e) {
+        done(e);
+    }
+}).on("bump", async a => {
+    try {
+        const packPath = pp(process.cwd());
+        let newVersion = null;
+
+        const pack = rJson(packPath);
+        try {
+            const json = await packageJsonPromise(pack.name);
+            if (Semver.major(json.version) === 0) {
                 Logger.log("Since there is no 1.x.x release yet, setting 1.0.0.");
                 pack.version = "1.0.0";
             } else {
@@ -151,40 +150,33 @@ new Tilda(pp(__dirname + "/..")).action([{
                 Logger.log(">>> Old version was: " + json.version);
             }
             Logger.log(">>> New version is: " + pack.version);
-            cb(null, pack);
-        });
-    };
-
-    var newVersion = null;
-    oneByOne([function (next) {
-        return rJson(packPath, next);
-    }, function (next, pack) {
-        return setPackVersion(pack, next);
-    }, function (next, pack) {
+        } catch (e) {
+            Logger.log(e);
+            Logger.log("Setting 1.0.0");
+            pack.version = "1.0.0";
+        }
         newVersion = pack.version;
         Logger.log("Updating package.json (version: " + newVersion + ")");
-        wJson(packPath, pack, next);
-    }
-    //, npmInstall
-    //, generateDocs
-    , currentBranch, function (next, currentBranch) {
-        var branchName = a.options.branch.value;
+        wJson(packPath, pack);
+        const cBranch = await currentBranch();
+        const branchName = a.options.branch.value;
 
         if (!a.options.c.is_provided) {
             // TODO Check if default branch. Too lazy right now to do that.
-            a.options.c.value = currentBranch !== "master" && currentBranch !== "gh-pages";
+            a.options.c.value = cBranch !== "master" && cBranch !== "gh-pages";
         }
 
         if (a.options.c.value) {
             Logger.log("Using the current branch.");
-            return next();
+        } else {
+            Logger.log("Switching on the " + branchName);
+            await spawno("git", ["checkout", "-B", branchName], { output: true });
         }
 
-        Logger.log("Switching on the " + branchName);
-        spawno("git", ["checkout", "-B", branchName], { output: true }, next);
-    }, function (next) {
-        return commitAll(":arrow_up: " + newVersion + " :tada:")(next);
-    }], done);
+        await commitAll(":arrow_up: " + newVersion + " :tada:");
+    } catch (e) {
+        done(e);
+    }
 }).on("publish", function (a) {
     var config = {};
 
@@ -311,4 +303,6 @@ new Tilda(pp(__dirname + "/..")).action([{
         Logger.log("Deleting the " + config.headBranch + " branch on GitHub.");
         spawno("git", ["push", "origin", "--delete", config.headBranch], { output: true }, next);
     }], done);
-});
+}).main(() => {
+    app.displayHelp();
+})
