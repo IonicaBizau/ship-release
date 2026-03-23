@@ -3,22 +3,23 @@
 
 "use strict";
 
-const rJson = require("r-json"),
-      Logger = require("bug-killer"),
-      wJson = require("w-json"),
-      PackageJson = require("pkg.json"),
-      Semver = require("semver"),
-      spawno = require("spawno").promise,
-      Tilda = require("tilda"),
-      pp = require("package-json-path"),
-      abs = require("abs"),
-      GitHub = require("gh.js"),
-      gitUrlParse = require("git-url-parse"),
-      findValue = require("find-value"),
-      barbe = require("barbe"),
-      ul = require("ul"),
-      mapO = require("map-o"),
-      BLAH_PATH = require.resolve("blah/bin/blah");
+const rJson = require("r-json");
+const Logger = require("bug-killer");
+const wJson = require("w-json");
+const PackageJson = require("pkg.json");
+const Semver = require("semver");
+const spawno = require("spawno").promise;
+const Tilda = require("tilda");
+const pp = require("package-json-path");
+const abs = require("abs");
+const GitHub = require("gh.js");
+const gitUrlParse = require("git-url-parse");
+const findValue = require("find-value");
+const barbe = require("barbe");
+const ul = require("ul");
+const mapO = require("map-o");
+const BLAH_PATH = require.resolve("blah/bin/blah");
+const spawn = require("child_process").spawn;
 
 const packageJsonPromise = name => new Promise((resolve, reject) => {
     PackageJson(name, "latest", function (err, json) {
@@ -33,17 +34,17 @@ const done = err => {
     if (err) {
         return Logger.log(err);
     }
-    Logger.log("Done.");
+    Logger.log("✅ Done.");
 };
 
 const commitAll = async msg => {
-    Logger.log("Adding the modified files.");
+    Logger.log("📦 Adding the modified files.");
     await spawno("git", ["add", ".", "-A"], { output: true });
 
-    Logger.log("Committing the changes");
+    Logger.log("📝 Committing the changes.");
     await spawno("git", ["commit", "-m", msg], { output: true });
 
-    Logger.log("Pushing the new branch");
+    Logger.log("🚀 Pushing the new branch.");
     await spawno("git", ["push", "--all"], { output: true });
 };
 
@@ -52,7 +53,7 @@ const npmInstall = async () => {
 };
 
 const generateDocs = async () => {
-    Logger.log("Generating documentation.");
+    Logger.log("📚 Generating documentation.");
     await spawno(BLAH_PATH, ["-f"], { output: true });
 };
 
@@ -123,7 +124,7 @@ const app = new Tilda(pp(__dirname + "/..")).action([{
 }]).on("branch", async a => {
     try {
         const branchName = a.options.name.value;
-        Logger.log("Creating and switching on the " + branchName + " branch.");
+        Logger.log("🌿 Creating and switching to the " + branchName + " branch.");
         await spawno("git", ["checkout", "-B", branchName], { output: true });
         await commitAll(a.options.message.value);
     } catch (e) {
@@ -138,7 +139,7 @@ const app = new Tilda(pp(__dirname + "/..")).action([{
         try {
             const json = await packageJsonPromise(pack.name);
             if (Semver.major(json.version) === 0) {
-                Logger.log("Since there is no 1.x.x release yet, setting 1.0.0.");
+                Logger.log("ℹ️ Since there is no 1.x.x release yet, setting 1.0.0.");
                 pack.version = "1.0.0";
             } else {
                 pack.version = Semver.inc(json.version, a.options.V.value);
@@ -147,16 +148,16 @@ const app = new Tilda(pp(__dirname + "/..")).action([{
                 }
             }
             if (json) {
-                Logger.log(">>> Old version was: " + json.version);
+                Logger.log("⬅️ Old version was: " + json.version);
             }
-            Logger.log(">>> New version is: " + pack.version);
+            Logger.log("➡️ New version is: " + pack.version);
         } catch (e) {
             Logger.log(e);
-            Logger.log("Setting 1.0.0");
+            Logger.log("⚙️ Setting version to 1.0.0.");
             pack.version = "1.0.0";
         }
         newVersion = pack.version;
-        Logger.log("Updating package.json (version: " + newVersion + ")");
+        Logger.log("🧩 Updating package.json (version: " + newVersion + ")");
         wJson(packPath, pack);
         const cBranch = await currentBranch();
         const branchName = a.options.branch.value;
@@ -167,9 +168,9 @@ const app = new Tilda(pp(__dirname + "/..")).action([{
         }
 
         if (a.options.c.value) {
-            Logger.log("Using the current branch.");
+            Logger.log("📍 Using the current branch.");
         } else {
-            Logger.log("Switching on the " + branchName);
+            Logger.log("🔀 Switching to the " + branchName + " branch.");
             await spawno("git", ["checkout", "-B", branchName], { output: true });
         }
 
@@ -177,8 +178,8 @@ const app = new Tilda(pp(__dirname + "/..")).action([{
     } catch (e) {
         done(e);
     }
-}).on("publish", function (a) {
-    var config = {};
+}).on("publish", async a => {
+    let config = {};
 
     if (a.options.c.value) {
         try {
@@ -189,11 +190,54 @@ const app = new Tilda(pp(__dirname + "/..")).action([{
         }
     }
 
-    var readGhToken = function readGhToken() {
+    const readGhToken = () => {
         try {
             return require(abs("~/.github-config.json")).token;
-        } catch (e) {};
+        } catch (e) { };
     };
+
+    const getRepoInfo = async (fullName) => {
+        return new Promise((resolve, reject) => {
+            gh.get("repos/" + fullName, function (err, repo) {
+                if (err) {
+                    return reject(err);
+                }
+                resolve(repo);
+            });
+        });
+    }
+
+    const createPullRequest = async (fullName, data) => {
+        return new Promise((resolve, reject) => {
+            gh.get("repos/" + fullName + "/pulls", {
+                data: data,
+                headers: {
+                    Accept: "application/vnd.github.sailor-v-preview+json, application/vnd.github.v3+json"
+                }
+            }, function (err, pr) {
+                if (err) {
+                    return reject(err);
+                }
+                resolve(pr);
+            });
+        });
+    }
+
+    const createRelease = async (fullName, data) => {
+        return new Promise((resolve, reject) => {
+            gh.get("repos/" + fullName + "/releases", {
+                data: data,
+                headers: {
+                    Accept: "application/vnd.github.sailor-v-preview+json, application/vnd.github.v3+json"
+                }
+            }, function (err, release) {
+                if (err) {
+                    return reject(err);
+                }
+                resolve(release);
+            });
+        });
+    }
 
     config.token = config.token || a.options.T.value || readGhToken();
     if (!config.token) {
@@ -210,99 +254,85 @@ const app = new Tilda(pp(__dirname + "/..")).action([{
         return Logger.log(new Error("The pull request description is required."));
     }
 
-    var gh = new GitHub(config.token),
-        packPath = pp(process.cwd()),
-        fullName = null,
-        repo = null,
-        url = null,
-        pack = null;
+    const gh = new GitHub(config.token);
+    const packPath = pp(process.cwd());
 
-    oneByOne([function (next) {
-        return rJson(packPath, next);
-    }, function (next, _pack) {
-        pack = _pack;
-
-        var repoUrl = findValue(pack, "repository.url");
+    try {
+        const pack = rJson(packPath);
+        const repoUrl = findValue(pack, "repository.url");
         if (!repoUrl) {
-            return next(new Error("Cannot find the repository url in package.json"));
+            return done("Cannot find the repository URL in package.json.");
         }
-
-        url = gitUrlParse(repoUrl);
+        const url = gitUrlParse(repoUrl);
         if (url.source !== "github.com") {
-            return next(new Error("The repository is not hosted on GitHub."));
+            return done("The repository is not hosted on GitHub.");
         }
 
-        Logger.log("Getting repo info");
+        Logger.log("🔎 Getting repository info.");
         config.version = pack.version;
-        fullName = url.full_name;
-        gh.get("repos/" + fullName, function (err, _repo) {
-            repo = _repo;
-            next(err, repo);
-        });
-    }, npmInstall, generateDocs, commitAll("Updated docs"), function (next) {
-        currentBranch(function (err, cBranch) {
-            if (err) {
-                return next(err);
-            }
-            config.headBranch = cBranch;
-            next(null, repo, url, pack);
-        });
-    }, function (next) {
-        Logger.log("Creating pull request");
+        const fullName = url.full_name;
+
+        const repo = await getRepoInfo(fullName);
+        await npmInstall();
+        await generateDocs();
+        await commitAll("Updated docs")
+        const cBranch = await currentBranch();
+
+        config.headBranch = cBranch;
+
+        Logger.log("📬 Creating a pull request.");
+
         config.baseBranch = config.baseBranch || repo.default_branch;
 
         mapO(config, function (v) {
             return v && barbe(v, ["<", ">"], { pack: pack, repo: repo });
         });
 
-        debugger
-        gh.get("repos/" + fullName + "/pulls", {
-            data: {
-                title: config.title,
-                body: config.body,
-                head: config.headBranch,
-                base: config.baseBranch
-            },
-            headers: {
-                Accept: "application/vnd.github.sailor-v-preview+json, application/vnd.github.v3+json"
-            }
-        }, next);
-    }, function (next) {
-        debugger;
-        Logger.log("Created pull request");
-        Logger.log("Switching to " + config.baseBranch);
-        spawno("git", ["checkout", config.baseBranch], { output: true }, next);
-    }, function (next) {
-        Logger.log("Updating from GitHub");
-        spawno("git", ["pull", "origin", config.baseBranch], { output: true }, next);
-    }, function (next) {
-        Logger.log("Merging " + config.headBranch + " -> " + config.baseBranch);
-        spawno("git", ["merge", config.headBranch], { output: true }, next);
-    }, function (next) {
-        Logger.log("Push everything on GitHub");
-        spawno("git", ["push", "--all"], { output: true }, next);
-    }, function (next) {
-        Logger.log("Publishing on npm.");
-        spawno(BABEL_IT_PATH, {
-            output: true
-        }, next);
-    }, function (next) {
-        Logger.log("Creating new GitHub release.");
-        gh.get("repos/" + fullName + "/releases", {
-            data: {
-                tag_name: config.version,
-                name: config.version,
-                body: config.body
-            }
-        }, next);
-    }, function (next) {
-        Logger.log("Created new release.");
-        Logger.log("Deleting the " + config.headBranch + " branch locally.");
-        spawno("git", ["branch", "-d", config.headBranch], { output: true }, next);
-    }, function (next) {
-        Logger.log("Deleting the " + config.headBranch + " branch on GitHub.");
-        spawno("git", ["push", "origin", "--delete", config.headBranch], { output: true }, next);
-    }], done);
+        await createPullRequest(fullName, {
+            title: config.title,
+            body: config.body,
+            head: config.headBranch,
+            base: config.baseBranch
+        });
+
+        Logger.log("✅ Created the pull request.");
+
+        Logger.log("🔀 Switching to " + config.baseBranch);
+        await spawno("git", ["checkout", config.baseBranch], { output: true });
+
+        Logger.log("⬇️ Updating from GitHub.");
+        await spawno("git", ["pull", "origin", config.baseBranch], { output: true });
+
+        Logger.log("🔁 Merging " + config.headBranch + " -> " + config.baseBranch);
+        await spawno("git", ["merge", config.headBranch], { output: true });
+
+        Logger.log("🚀 Pushing everything to GitHub.");
+        await spawno("git", ["push", "--all"], { output: true });
+
+        Logger.log("📦 Publishing to npm.");
+        await new Promise(
+            (res, rej) => spawn("npm", ["publish"], {
+                stdio: "inherit"
+            }).on("exit", c => c === 0 ? res() : rej(new Error(`exit ${c}`)))
+        );
+
+        Logger.log("🏷️ Creating a new GitHub release.");
+        await createRelease(fullName, {
+            tag_name: config.version,
+            name: config.version,
+            body: config.body
+        });
+
+        Logger.log("✅ Created a new release.");
+
+        Logger.log("🧹 Deleting the " + config.headBranch + " branch locally.");
+        await spawno("git", ["branch", "-d", config.headBranch], { output: true });
+
+        Logger.log("🧹 Deleting the " + config.headBranch + " branch on GitHub.");
+        await spawno("git", ["push", "origin", "--delete", config.headBranch], { output: true });
+    } catch (e) {
+        Logger.log(e);
+    }
 }).main(() => {
     app.displayHelp();
 })
