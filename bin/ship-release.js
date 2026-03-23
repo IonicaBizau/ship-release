@@ -59,7 +59,7 @@ const generateDocs = async () => {
 
 const currentBranch = async () => {
     const { stdout, stderr } = await spawno("git", ["rev-parse", "--abbrev-ref", "HEAD"], { output: true });
-    return (stderr || stdout || "").trim();
+    return (stdout || stderr || "").trim();
 };
 
 const app = new Tilda(pp(__dirname + "/..")).action([{
